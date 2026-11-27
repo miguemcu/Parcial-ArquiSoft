@@ -1,6 +1,9 @@
 package com.udea.parcial_equipo_4.exception;
 
+import com.udea.parcial_equipo_4.config.ApiVersionConfig;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -8,18 +11,39 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.bind.UnsatisfiedServletRequestParameterException;
+import org.springframework.web.bind.ServletRequestBindingException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.accept.InvalidApiVersionException;
+import org.springframework.web.accept.MissingApiVersionException;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+
+    private final List<String> versionesSoportadas;
+
+    public GlobalExceptionHandler(@Value("${spring.mvc.apiversion.supported}") List<String> versionesSoportadas) {
+        this.versionesSoportadas = List.copyOf(versionesSoportadas);
+    }
+
+    @ExceptionHandler(MissingApiVersionException.class)
+    public ProblemDetail handleVersionFaltante(MissingApiVersionException ex) {
+        return problemVersion("Falta el header '%s'".formatted(ApiVersionConfig.HEADER_VERSION));
+    }
+
+    @ExceptionHandler(InvalidApiVersionException.class)
+    public ProblemDetail handleVersionInvalida(InvalidApiVersionException ex, HttpServletRequest request) {
+        return problemVersion("La versión '%s' no está soportada".formatted(request.getHeader(ApiVersionConfig.HEADER_VERSION)));
+    }
 
     @ExceptionHandler(RecursoNoEncontradoException.class)
     public ProblemDetail handleNotFound(RecursoNoEncontradoException ex) {
@@ -64,6 +88,26 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail body = problem(HttpStatus.BAD_REQUEST, "Parámetro requerido",
                 "El parámetro '%s' es obligatorio".formatted(ex.getParameterName()));
         return ResponseEntity.badRequest().headers(headers).body(body);
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleServletRequestBindingException(ServletRequestBindingException ex,
+                                                                          HttpHeaders headers,
+                                                                          HttpStatusCode status,
+                                                                          WebRequest request) {
+        if (ex instanceof UnsatisfiedServletRequestParameterException) {
+            ProblemDetail body = problem(HttpStatus.BAD_REQUEST, "Parámetros inválidos",
+                    "Envíe exactamente uno de los parámetros 'codigo' o 'espectaculoId'");
+            return ResponseEntity.badRequest().headers(headers).body(body);
+        }
+        return super.handleServletRequestBindingException(ex, headers, status, request);
+    }
+
+    private ProblemDetail problemVersion(String motivo) {
+        ProblemDetail body = problem(HttpStatus.BAD_REQUEST, "Versión de API inválida",
+                "%s. Versiones soportadas: %s".formatted(motivo, String.join(", ", versionesSoportadas)));
+        body.setProperty("versionesSoportadas", versionesSoportadas);
+        return body;
     }
 
     private ProblemDetail problem(HttpStatus status, String title, String detail) {
