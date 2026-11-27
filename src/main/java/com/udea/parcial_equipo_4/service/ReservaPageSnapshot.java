@@ -8,6 +8,9 @@ import org.springframework.data.domain.Sort;
 
 import java.util.List;
 
+/**
+ * Copia serializable de una página de reservas para guardarla en Redis.
+ */
 public record ReservaPageSnapshot(
         List<ReservaResponse> contenido,
         int numeroPagina,

@@ -11,6 +11,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * Entidad JPA de la tabla {@code cliente}. El documento es único.
+ */
 @Entity
 @Table(name = "cliente")
 @Getter

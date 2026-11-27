@@ -28,6 +28,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * Endpoints de reservas ({@code /api/reservas}). Los requeridos por el enunciado son la consulta
+ * por código ({@code GET ?codigo=}) y la creación ({@code POST}); además lista por espectáculo.
+ */
 @RestController
 @RequestMapping("/api/reservas")
 @RequiredArgsConstructor

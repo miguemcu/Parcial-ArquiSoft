@@ -1,0 +1,27 @@
+# Control de versiones y herramientas
+.git
+.gitignore
+.gitattributes
+.github
+.claude
+.idea
+.vscode
+*.iml
+
+# Compilados
+target
+
+# Secretos: nunca entran a la imagen
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# No necesarios para compilar
+docs
+observability
+docker-compose*.yml
+Dockerfile
+*.md
+HELP.md

@@ -26,6 +26,9 @@ import org.springframework.web.bind.annotation.RestController;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
+/**
+ * Endpoints de apoyo de clientes ({@code /api/clientes}): registrar y consultar por id.
+ */
 @RestController
 @RequestMapping("/api/clientes")
 @RequiredArgsConstructor

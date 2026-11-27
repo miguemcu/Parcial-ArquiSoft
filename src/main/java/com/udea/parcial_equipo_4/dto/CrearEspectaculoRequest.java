@@ -10,6 +10,9 @@ import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 
+/**
+ * Datos para registrar un espectáculo: nombre, fecha (hoy o posterior) y capacidad de sillas.
+ */
 public record CrearEspectaculoRequest(
         @Schema(description = "Nombre del espectáculo", example = "Concierto Sinfónico de Navidad")
         @NotBlank(message = "es obligatorio")

@@ -5,6 +5,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
+/**
+ * Datos para registrar un cliente. El documento debe ser único.
+ */
 public record CrearClienteRequest(
         @Schema(description = "Nombre completo", example = "Ana María Restrepo")
         @NotBlank(message = "es obligatorio")

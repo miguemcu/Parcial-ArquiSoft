@@ -9,6 +9,10 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
 
+/**
+ * Acceso a datos de espectáculos, con lectura bloqueante ({@code PESSIMISTIC_WRITE})
+ * para crear reservas sin sobreventa.
+ */
 public interface EspectaculoRepository extends JpaRepository<Espectaculo, Integer> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

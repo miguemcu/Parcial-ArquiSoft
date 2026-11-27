@@ -14,6 +14,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Lógica de negocio de espectáculos; la consulta por id usa la caché {@code espectaculos}.
+ */
 @Service
 @RequiredArgsConstructor
 public class EspectaculoService {

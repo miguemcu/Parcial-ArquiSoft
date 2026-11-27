@@ -30,6 +30,10 @@ import tools.jackson.databind.module.SimpleModule;
 import java.time.Duration;
 import java.time.LocalDate;
 
+/**
+ * Caché Redis: TTL y serializador JSON tipado por cada caché, y manejo de errores
+ * que deja seguir sin caché si Redis no responde.
+ */
 @Configuration
 @EnableCaching
 public class CacheConfig implements CachingConfigurer {
