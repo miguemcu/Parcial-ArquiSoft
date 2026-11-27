@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#172b3a">
+    <title>Butaca — Reservas de espectáculos</title>
+    <link rel="stylesheet" href="/styles.css">
+    <script src="/app.js" defer></script>
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="/" aria-label="Butaca, inicio">
+            <span class="brand-mark" aria-hidden="true">B</span>
+            <span>butaca<span class="brand-period">.</span></span>
+        </a>
+        <a class="docs-link" href="/swagger-ui.html" target="_blank" rel="noreferrer">Documentación API <span aria-hidden="true">↗</span></a>
+    </header>
+
+    <main>
+        <section class="intro" aria-labelledby="page-title">
+            <p class="eyebrow"><span class="eyebrow-dot"></span> Tus planes empiezan aquí</p>
+            <h1 id="page-title">Una noche para<br><span>recordar.</span></h1>
+            <p class="intro-copy">Asegura tu lugar en el próximo gran espectáculo o consulta los detalles de tu reserva.</p>
+            <div class="intro-note"><span aria-hidden="true">✳</span> Reserva fácil, disfruta en grande</div>
+            <div class="ticket-art" aria-hidden="true">
+                <span class="ticket-star">✳</span>
+                <span class="ticket-caption">NOS VEMOS<br>EN EL SHOW</span>
+                <span class="ticket-line"></span>
+                <span class="ticket-number">01&nbsp; / &nbsp;LIVE</span>
+            </div>
+        </section>
+
+        <section class="workspace" aria-label="Gestión de reservas">
+            <article class="panel lookup-panel">
+                <div class="panel-heading">
+                    <span class="step-number">01</span>
+                    <div>
+                        <p class="panel-kicker">Ya tienes una reserva</p>
+                        <h2>Encuéntrala</h2>
+                    </div>
+                </div>
+                <p class="panel-description">Ingresa el código que recibiste al reservar.</p>
+                <form id="lookup-form">
+                    <label for="codigo">Código de reserva</label>
+                    <div class="input-with-icon">
+                        <span aria-hidden="true">⌕</span>
+                        <input id="codigo" name="codigo" type="text" placeholder="RES-ABC12345" autocomplete="off" required>
+                    </div>
+                    <button class="button button-dark" type="submit">
+                        Consultar reserva <span aria-hidden="true">→</span>
+                    </button>
+                </form>
+                <div id="lookup-message" class="message" role="status" aria-live="polite" hidden></div>
+                <div id="lookup-result" class="reservation-result" aria-live="polite" hidden></div>
+            </article>
+
+            <article class="panel create-panel">
+                <div class="panel-heading">
+                    <span class="step-number step-number-accent">02</span>
+                    <div>
+                        <p class="panel-kicker">¿Listo para salir?</p>
+                        <h2>Haz tu reserva</h2>
+                    </div>
+                </div>
+                <p class="panel-description">Completa los datos para asegurar tus sillas.</p>
+                <form id="create-form">
+                    <div class="form-grid">
+                        <div class="field">
+                            <label for="clienteId">ID del cliente</label>
+                            <input id="clienteId" name="clienteId" type="number" min="1" step="1" placeholder="Ej. 12" required>
+                        </div>
+                        <div class="field">
+                            <label for="espectaculoId">ID del espectáculo</label>
+                            <input id="espectaculoId" name="espectaculoId" type="number" min="1" step="1" placeholder="Ej. 7" required>
+                        </div>
+                    </div>
+                    <div class="field seats-field">
+                        <label for="cantidadSillas">Cantidad de sillas</label>
+                        <input id="cantidadSillas" name="cantidadSillas" type="number" min="1" max="10" step="1" value="1" required>
+                        <span class="field-hint">Puedes reservar entre 1 y 10 sillas.</span>
+                    </div>
+                    <button class="button button-accent" type="submit">
+                        Crear mi reserva <span aria-hidden="true">→</span>
+                    </button>
+                </form>
+                <div id="create-message" class="message" role="status" aria-live="polite" hidden></div>
+                <div id="create-result" class="reservation-result created-result" aria-live="polite" hidden></div>
+            </article>
+        </section>
+    </main>
+
+    <footer>
+        <span>Hecho para que solo te preocupes por disfrutar.</span>
+        <span>API de reservas <span class="footer-version">v1.0</span></span>
+    </footer>
+</body>
+</html>
