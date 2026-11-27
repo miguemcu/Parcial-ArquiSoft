@@ -11,6 +11,8 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.bind.UnsatisfiedServletRequestParameterException;
+import org.springframework.web.bind.ServletRequestBindingException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.accept.InvalidApiVersionException;
@@ -86,6 +88,19 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail body = problem(HttpStatus.BAD_REQUEST, "Parámetro requerido",
                 "El parámetro '%s' es obligatorio".formatted(ex.getParameterName()));
         return ResponseEntity.badRequest().headers(headers).body(body);
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleServletRequestBindingException(ServletRequestBindingException ex,
+                                                                          HttpHeaders headers,
+                                                                          HttpStatusCode status,
+                                                                          WebRequest request) {
+        if (ex instanceof UnsatisfiedServletRequestParameterException) {
+            ProblemDetail body = problem(HttpStatus.BAD_REQUEST, "Parámetros inválidos",
+                    "Envíe exactamente uno de los parámetros 'codigo' o 'espectaculoId'");
+            return ResponseEntity.badRequest().headers(headers).body(body);
+        }
+        return super.handleServletRequestBindingException(ex, headers, status, request);
     }
 
     private ProblemDetail problemVersion(String motivo) {

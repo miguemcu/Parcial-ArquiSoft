@@ -11,6 +11,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import org.springframework.data.domain.Page;
+import org.springframework.data.web.PagedResourcesAssembler;
+import org.springframework.hateoas.PagedModel;
 import lombok.RequiredArgsConstructor;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.IanaLinkRelations;
@@ -33,9 +37,12 @@ public class ReservaController {
 
     private final ReservaService reservaService;
     private final ReservaModelAssembler reservaModelAssembler;
+    private final PagedResourcesAssembler<ReservaResponse> pagedResourcesAssembler;
 
-    @GetMapping(version = "1")
-    @Operation(summary = "Consultar una reserva por su código")
+    @GetMapping(params = {"codigo", "!espectaculoId"}, version = "1")
+    @Operation(summary = "Consultar una reserva por su código",
+            description = "Usa el parámetro codigo. No se puede combinar con espectaculoId: "
+                    + "si llegan ambos, o ninguno, la respuesta es 400.")
     @ApiResponse(responseCode = "200", description = "Reserva encontrada")
     @ApiResponse(responseCode = "400", description = "Falta el parámetro codigo",
             content = @Content(mediaType = PROBLEM_JSON, schema = @Schema(implementation = ProblemDetail.class)))
@@ -45,6 +52,26 @@ public class ReservaController {
             @Parameter(description = "Código de la reserva", example = "RES-ABC12345")
             @RequestParam String codigo) {
         return ResponseEntity.ok(reservaModelAssembler.toModel(reservaService.consultarPorCodigo(codigo)));
+    }
+
+    @GetMapping(params = {"espectaculoId", "!codigo"}, version = "1+")
+    @Operation(summary = "Listar las reservas de un espectáculo (paginado)",
+            description = "Ordenadas por id descendente. size por defecto 10 y máximo 50 (un valor mayor se limita a 50). "
+                    + "No se puede combinar con codigo: si llegan ambos, o ninguno, la respuesta es 400.")
+    @ApiResponse(responseCode = "200", description = "Página de reservas con enlaces self, first, prev, next y last")
+    @ApiResponse(responseCode = "400", description = "Parámetros de paginación inválidos o combinación de parámetros no permitida",
+            content = @Content(mediaType = PROBLEM_JSON, schema = @Schema(implementation = ProblemDetail.class)))
+    @ApiResponse(responseCode = "404", description = "No existe un espectáculo con ese id",
+            content = @Content(mediaType = PROBLEM_JSON, schema = @Schema(implementation = ProblemDetail.class)))
+    public ResponseEntity<PagedModel<EntityModel<ReservaResponse>>> listarPorEspectaculo(
+            @Parameter(description = "Id del espectáculo", example = "1")
+            @RequestParam Integer espectaculoId,
+            @Parameter(description = "Número de página (desde 0)", example = "0")
+            @RequestParam(defaultValue = "0") @Min(value = 0, message = "debe ser mayor o igual a 0") int page,
+            @Parameter(description = "Tamaño de página (máximo 50)", example = "10")
+            @RequestParam(defaultValue = "10") @Min(value = 1, message = "debe ser al menos 1") int size) {
+        Page<ReservaResponse> reservas = reservaService.listarPorEspectaculo(espectaculoId, page, size);
+        return ResponseEntity.ok(pagedResourcesAssembler.toModel(reservas, reservaModelAssembler));
     }
 
     @PostMapping(version = "1+")
