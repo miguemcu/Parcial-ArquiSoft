@@ -243,6 +243,54 @@ Los secretos (`SONAR_TOKEN`, `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`) viven solo
 
 ---
 
+## Despliegue en la nube (Render + Vercel)
+
+```text
+Vercel (frontend estático) ──HTTPS──▶ Render (imagen Docker de la API) ──▶ Supabase (PostgreSQL)
+                                              └──▶ Render Key Value (Redis)
+```
+
+### 1. Backend en Render (imagen de Docker Hub)
+
+El CD publica la imagen `<DOCKERHUB_USERNAME>/parcial-arquisoft:latest` en cada push a `main`.
+
+1. **Redis**: en Render, *New → Key Value* (misma región que la API). Copia el host y el puerto de la **Internal Connection URL** (`redis://<host>:6379`).
+2. **API**: *New → Web Service → Existing Image* con `docker.io/<DOCKERHUB_USERNAME>/parcial-arquisoft:latest` (si el repositorio de Docker Hub es privado, agrega una credencial con un token de Docker Hub).
+3. **Health Check Path**: `/actuator/health`.
+4. **Variables de entorno**:
+
+| Variable | Valor |
+|---|---|
+| `PORT` | `8080` (puerto donde escucha la app; Render enruta a él) |
+| `DB_URL` | `jdbc:postgresql://aws-0-us-west-2.pooler.supabase.com:5432/postgres?sslmode=require` |
+| `DB_USERNAME` | `postgres.<project-ref>` |
+| `DB_PASSWORD` | contraseña de Supabase (marcar como secreta) |
+| `DB_POOL_MAX_SIZE` | `5` |
+| `FLYWAY_BASELINE_ON_MIGRATE` | `false` |
+| `REDIS_HOST` | host interno del Key Value |
+| `REDIS_PORT` | `6379` |
+| `FRONTEND_URL` | URL de Vercel, p. ej. `https://parcial-arquisoft.vercel.app` (varias separadas por coma) |
+
+5. **Redespliegue con cada versión**: en *Settings → Deploy Hook* copia la URL. Para que se redespliegue sola tras el CD, guárdala como secreto `RENDER_DEPLOY_HOOK` en GitHub y llámala al final de `docker-publish` (`curl -fsS -X POST "$RENDER_DEPLOY_HOOK"`); si no, usa *Manual Deploy → Deploy latest reference*.
+6. Verifica `https://<servicio>.onrender.com/actuator/health` y `https://<servicio>.onrender.com/swagger-ui.html`.
+
+> En el plan gratuito el servicio se duerme tras 15 min sin tráfico; la primera petición tarda ~1 min en despertar.
+
+### 2. Frontend en Vercel
+
+1. *Add New → Project* e importa este repositorio.
+2. **Root Directory**: `src/main/resources/static`. **Framework Preset**: *Other*. El build y la salida ya están en [`vercel.json`](src/main/resources/static/vercel.json).
+3. **Variable de entorno**: `API_URL = https://<servicio>.onrender.com` (sin `/` final). El build la escribe en `config.js`.
+4. Despliega y copia la URL de Vercel en `FRONTEND_URL` de Render (CORS); redespliega Render.
+
+Sin `API_URL` (por ejemplo, al servir el frontend desde Spring Boot en `/`), el frontend usa el mismo origen.
+
+### 3. Observabilidad del despliegue
+
+`observability/prometheus/prometheus.yml` ya incluye el job `spring-boot-render`: cambia el target por el dominio real de Render y levanta Prometheus y Grafana con `docker compose up -d prometheus grafana`.
+
+---
+
 ## Evidencias de funcionamiento
 
 Peticiones reales contra la aplicación en ejecución (`./mvnw spring-boot:run`, base de datos en Supabase) el 27/11/2026. Se muestra el cuerpo completo de cada respuesta y, de los headers, solo `Content-Type` y `Location`.
