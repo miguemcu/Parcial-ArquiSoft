@@ -14,9 +14,9 @@ import com.udea.parcial_equipo_4.repository.ClienteRepository;
 import com.udea.parcial_equipo_4.repository.EspectaculoRepository;
 import com.udea.parcial_equipo_4.repository.ReservaRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,11 +36,13 @@ public class ReservaService {
     private final ReservaRepository reservaRepository;
     private final ClienteRepository clienteRepository;
     private final EspectaculoRepository espectaculoRepository;
+    private final ReservaPageCacheService reservaPageCacheService;
 
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "reservas", key = "#codigo")
     public ReservaResponse consultarPorCodigo(String codigo) {
         return reservaRepository.findByCodigoReserva(codigo)
-                .map(this::toResponse)
+                .map(ReservaService::toResponse)
                 .orElseThrow(() -> new ReservaNoEncontradaException(codigo));
     }
 
@@ -48,6 +50,7 @@ public class ReservaService {
      * Consulta de la versión 2: agrega la capacidad total del espectáculo y sus sillas disponibles.
      */
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "reservas-v2", key = "#codigo")
     public ReservaV2Response consultarPorCodigoV2(String codigo) {
         Reserva reserva = reservaRepository.findByCodigoReserva(codigo)
                 .orElseThrow(() -> new ReservaNoEncontradaException(codigo));
@@ -70,15 +73,11 @@ public class ReservaService {
      */
     @Transactional(readOnly = true)
     public Page<ReservaResponse> listarPorEspectaculo(Integer espectaculoId, int page, int size) {
-        if (!espectaculoRepository.existsById(espectaculoId)) {
-            throw new EspectaculoNoEncontradoException(espectaculoId);
-        }
-        PageRequest pageRequest = PageRequest.of(page, Math.min(size, TAMANO_MAXIMO_PAGINA),
-                Sort.by(Sort.Direction.DESC, "id"));
-        return reservaRepository.findByEspectaculoId(espectaculoId, pageRequest).map(this::toResponse);
+        return reservaPageCacheService.listarPorEspectaculo(espectaculoId, page, size).toPage();
     }
 
     @Transactional
+    @CacheEvict(cacheNames = {"reservas-v2", "reservas-por-espectaculo"}, allEntries = true)
     public ReservaResponse crear(CrearReservaRequest request) {
         Cliente cliente = clienteRepository.findById(request.clienteId())
                 .orElseThrow(() -> new ClienteNoEncontradoException(request.clienteId()));
@@ -114,7 +113,7 @@ public class ReservaService {
         return codigo.toString();
     }
 
-    private ReservaResponse toResponse(Reserva reserva) {
+    static ReservaResponse toResponse(Reserva reserva) {
         Cliente cliente = reserva.getCliente();
         Espectaculo espectaculo = reserva.getEspectaculo();
         return new ReservaResponse(
