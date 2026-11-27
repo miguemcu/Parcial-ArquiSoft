@@ -1,7 +1,6 @@
 package com.udea.parcial_equipo_4.service;
 
 import com.udea.parcial_equipo_4.exception.EspectaculoNoEncontradoException;
-import com.udea.parcial_equipo_4.repository.ClienteRepository;
 import com.udea.parcial_equipo_4.repository.EspectaculoRepository;
 import com.udea.parcial_equipo_4.repository.ReservaRepository;
 import org.junit.jupiter.api.Test;
@@ -11,6 +10,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
@@ -29,20 +29,21 @@ class ReservaServicePaginacionTest {
     private ReservaRepository reservaRepository;
 
     @Mock
-    private ClienteRepository clienteRepository;
-
-    @Mock
     private EspectaculoRepository espectaculoRepository;
 
+    @Mock
+    private ReservaMapper reservaMapper;
+
     @InjectMocks
-    private ReservaService reservaService;
+    private ReservaPageCacheService reservaPageCacheService;
 
     @Test
     void sizeMayorA50SeLimitaA50YOrdenaPorIdDescendente() {
         when(espectaculoRepository.existsById(1)).thenReturn(true);
-        when(reservaRepository.findByEspectaculoId(eq(1), any(Pageable.class))).thenReturn(Page.empty());
+        when(reservaRepository.findByEspectaculoId(eq(1), any(Pageable.class)))
+                .thenAnswer(invocation -> Page.empty(invocation.getArgument(1)));
 
-        reservaService.listarPorEspectaculo(1, 2, 100);
+        reservaPageCacheService.listarPorEspectaculo(1, 2, 100);
 
         ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
         verify(reservaRepository).findByEspectaculoId(eq(1), captor.capture());
@@ -55,9 +56,10 @@ class ReservaServicePaginacionTest {
     @Test
     void sizeDentroDelLimiteSeRespeta() {
         when(espectaculoRepository.existsById(1)).thenReturn(true);
-        when(reservaRepository.findByEspectaculoId(eq(1), any(Pageable.class))).thenReturn(Page.empty());
+        when(reservaRepository.findByEspectaculoId(eq(1), any(Pageable.class)))
+                .thenAnswer(invocation -> Page.empty(invocation.getArgument(1)));
 
-        reservaService.listarPorEspectaculo(1, 0, 10);
+        reservaPageCacheService.listarPorEspectaculo(1, 0, 10);
 
         ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
         verify(reservaRepository).findByEspectaculoId(eq(1), captor.capture());
@@ -68,7 +70,7 @@ class ReservaServicePaginacionTest {
     void espectaculoInexistenteLanzaNoEncontrado() {
         when(espectaculoRepository.existsById(99)).thenReturn(false);
 
-        assertThatThrownBy(() -> reservaService.listarPorEspectaculo(99, 0, 10))
+        assertThatThrownBy(() -> reservaPageCacheService.listarPorEspectaculo(99, 0, 10))
                 .isInstanceOf(EspectaculoNoEncontradoException.class);
         verify(reservaRepository, never()).findByEspectaculoId(any(), any());
     }
