@@ -128,10 +128,19 @@ Reglas estrictas:
 
 ## 9. Docker
 
-- `Dockerfile` multi-stage (build con Maven, runtime con JRE 21 ligero), ejecutando como usuario no root.
-- `docker-compose.yml` con: app, postgres, redis, prometheus y grafana.
-- Configuración por variables de entorno. Ningún secreto en el repositorio: usa `.env` (ignorado por git) y un `.env.example` documentado.
-- `docker compose up` debe levantar todo el sistema desde cero.
+- `Dockerfile` multi-stage: compila con el wrapper de Maven sobre `eclipse-temurin:21-jdk-alpine` (sin tests, los corre el CI) y ejecuta sobre `eclipse-temurin:21-jre-alpine` con las capas de Spring Boot, usuario no root, `-XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError` y `HEALTHCHECK` contra `/actuator/health`.
+- `.dockerignore` deja fuera `.git`, `target`, `.env`, `.env.*` (salvo `.env.example`), IDEs, `.claude`, `docs` y `observability`.
+- `docker-compose.yml` (la base de datos **no** va en el compose: es PostgreSQL externo en Supabase):
+
+| Servicio | Imagen | Puerto | Notas |
+|---|---|---|---|
+| `app` | build local | 8080 | Lee el `.env` (`env_file`). `REDIS_HOST=redis`, `REDIS_PORT=6379`. Espera a que Redis esté healthy. |
+| `redis` | `redis:8-alpine` | 6379 (solo desarrollo) | Caché sin persistencia en disco. Healthcheck `redis-cli ping`. |
+| `prometheus` | `prom/prometheus` | 9090 | Config en `observability/prometheus/prometheus.yml`; hace scrape de `app:8080/actuator/prometheus`. |
+| `grafana` | `grafana/grafana` | 3000 | Datasource y dashboards desde `observability/grafana/`. Contraseña admin en `GRAFANA_ADMIN_PASSWORD` (obligatoria). |
+
+- Variables (documentadas en `.env.example`): `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `DB_POOL_MAX_SIZE`, `FLYWAY_BASELINE_ON_MIGRATE`, `REDIS_HOST`, `REDIS_PORT`, `FRONTEND_URL`, `GRAFANA_ADMIN_USER`, `GRAFANA_ADMIN_PASSWORD`. Ningún secreto en el repositorio: el `.env` está ignorado por git y no entra a la imagen.
+- Arranque: `cp .env.example .env`, completar valores y `docker compose up -d --build`.
 
 ## 10. Pruebas
 
@@ -148,12 +157,16 @@ Reglas estrictas:
 ## 11. CI
 
 - Workflow en `.github/workflows/ci.yml` (GitHub Actions). Corre en cada push a `main` y `develop` y en cada PR hacia esas ramas.
-- Pasos: compila y ejecuta las pruebas con `./mvnw -B verify`, genera la cobertura con JaCoCo (`target/site/jacoco/`), analiza en SonarCloud esperando el quality gate y sube como artefactos el reporte de JaCoCo y los de Surefire.
+- Jobs: `tests` → (`sonar` y `docker-build` en paralelo) → `docker-publish`.
+  - `tests`: `./mvnw -B verify` (H2 + JaCoCo). Sube los reportes de Surefire y JaCoCo, y los binarios y la cobertura que usa Sonar.
+  - `sonar`: analiza en SonarCloud con esos artefactos (no repite los tests) y espera el quality gate. Solo en PRs y en `main` (límite del plan gratuito).
+  - `docker-build`: construye la imagen sin publicarla, para validar el `Dockerfile` en cada PR.
+  - `docker-publish` (CD): solo en push a `main`, si `tests` y `docker-build` pasaron y `sonar` pasó o se omitió. Publica `<DOCKERHUB_USERNAME>/parcial-arquisoft` con las etiquetas `latest` y el SHA corto del commit.
 - Antes de abrir un PR, `./mvnw verify` debe pasar en local.
 - `SONAR_TOKEN` vive **solo** como secreto del repositorio en GitHub. Nunca en el `pom.xml`, el `.env` ni otro archivo. Sin el secreto (por ejemplo, PRs desde forks) el paso de Sonar se omite.
 - SonarCloud (plan gratuito) solo analiza `main` y los pull requests. En los push a `develop` el paso de Sonar se omite; el código de `develop` ya se analizó en su PR.
 - El umbral mínimo de cobertura está desactivado (`jacoco.check.skip=true` en el `pom.xml`). Se activa con `./mvnw verify -Djacoco.check.skip=false` o cambiando la propiedad.
-- Aún no hay CD (publicación de imagen Docker): se agregará cuando exista el `Dockerfile`.
+- Los secretos `SONAR_TOKEN`, `DOCKERHUB_USERNAME` y `DOCKERHUB_TOKEN` viven **solo** como secretos del repositorio en GitHub.
 
 ## 12. Git: commits y ramas
 
