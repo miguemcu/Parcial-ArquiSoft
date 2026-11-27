@@ -33,9 +33,21 @@ public class OpenApiConfig {
         return new OpenAPI()
                 .info(new Info()
                         .title("API de reservas de sillas para conciertos")
-                        .description("Consulta y creación de reservas de sillas por espectáculo. "
-                                + "Todas las peticiones a /api/** requieren el header "
-                                + ApiVersionConfig.HEADER_VERSION + " (versiones soportadas: 1, 2).")
+                        .description("""
+                                Consulta y creación de reservas de sillas por espectáculo.
+
+                                **Endpoints requeridos por el enunciado**
+                                1. `GET /api/reservas?codigo=RES-XXXXXXXX`: consulta la reserva de sillas                                 de un espectáculo usando el código de reserva como parámetro de consulta.
+                                2. `POST /api/reservas`: registra una nueva reserva de sillas                                 (`clienteId`, `espectaculoId`, `cantidadSillas`).
+
+                                **Endpoints de apoyo para probar**
+                                - `POST /api/clientes` y `GET /api/clientes/{id}`: registrar y consultar el cliente que reserva.
+                                - `POST /api/espectaculos`, `GET /api/espectaculos` y `GET /api/espectaculos/{id}`:                                 registrar, listar y consultar espectáculos.
+                                - `GET /api/reservas?espectaculoId=1`: listar las reservas de un espectáculo (paginado).
+                                - `GET /actuator/health`: estado de la aplicación (Actuator, sin header de versión).
+
+                                Todas las peticiones a /api/** requieren el header %s (versiones soportadas: 1, 2)."""
+                                .formatted(ApiVersionConfig.HEADER_VERSION))
                         .version("1"));
     }
 
