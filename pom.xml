@@ -29,6 +29,14 @@
 	<properties>
 		<java.version>21</java.version>
 		<springdoc.version>3.2.1</springdoc.version>
+		<jacoco.version>0.8.16</jacoco.version>
+
+		<!-- Umbral de cobertura (JaCoCo check). Desactivado por ahora.
+		     Para activarlo: mvn verify -Djacoco.check.skip=false
+		     o cambiar el valor a false aquí. El mínimo es una fracción (0.60 = 60 %). -->
+		<jacoco.check.skip>true</jacoco.check.skip>
+		<jacoco.minimo.lineas>0.60</jacoco.minimo.lineas>
+
 	</properties>
 	<dependencies>
 		<dependency>
@@ -146,6 +154,62 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>${jacoco.version}</version>
+				<configuration>
+					<excludes>
+						<!-- Clase principal y beans de configuración: sin lógica que probar -->
+						<exclude>com/udea/parcial_equipo_4/ParcialEquipo4Application.class</exclude>
+						<exclude>com/udea/parcial_equipo_4/config/**</exclude>
+					</excludes>
+				</configuration>
+				<executions>
+					<execution>
+						<id>prepare-agent</id>
+						<phase>initialize</phase>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>report</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>report</goal>
+						</goals>
+						<configuration>
+							<formats>
+								<format>XML</format>
+								<format>HTML</format>
+							</formats>
+						</configuration>
+					</execution>
+					<execution>
+						<id>check</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>check</goal>
+						</goals>
+						<configuration>
+							<skip>${jacoco.check.skip}</skip>
+							<rules>
+								<rule>
+									<element>BUNDLE</element>
+									<limits>
+										<limit>
+											<counter>LINE</counter>
+											<value>COVEREDRATIO</value>
+											<minimum>${jacoco.minimo.lineas}</minimum>
+										</limit>
+									</limits>
+								</rule>
+							</rules>
+						</configuration>
+					</execution>
+				</executions>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
