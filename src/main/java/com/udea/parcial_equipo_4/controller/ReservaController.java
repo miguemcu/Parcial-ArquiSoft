@@ -12,6 +12,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.IanaLinkRelations;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,9 +22,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
-
-import java.net.URI;
 
 @RestController
 @RequestMapping("/api/reservas")
@@ -33,6 +32,7 @@ public class ReservaController {
     private static final String PROBLEM_JSON = "application/problem+json";
 
     private final ReservaService reservaService;
+    private final ReservaModelAssembler reservaModelAssembler;
 
     @GetMapping(version = "1")
     @Operation(summary = "Consultar una reserva por su código")
@@ -41,10 +41,10 @@ public class ReservaController {
             content = @Content(mediaType = PROBLEM_JSON, schema = @Schema(implementation = ProblemDetail.class)))
     @ApiResponse(responseCode = "404", description = "No existe una reserva con ese código",
             content = @Content(mediaType = PROBLEM_JSON, schema = @Schema(implementation = ProblemDetail.class)))
-    public ResponseEntity<ReservaResponse> consultar(
+    public ResponseEntity<EntityModel<ReservaResponse>> consultar(
             @Parameter(description = "Código de la reserva", example = "RES-ABC12345")
             @RequestParam String codigo) {
-        return ResponseEntity.ok(reservaService.consultarPorCodigo(codigo));
+        return ResponseEntity.ok(reservaModelAssembler.toModel(reservaService.consultarPorCodigo(codigo)));
     }
 
     @PostMapping(version = "1+")
@@ -57,12 +57,8 @@ public class ReservaController {
             content = @Content(mediaType = PROBLEM_JSON, schema = @Schema(implementation = ProblemDetail.class)))
     @ApiResponse(responseCode = "409", description = "No hay sillas suficientes disponibles",
             content = @Content(mediaType = PROBLEM_JSON, schema = @Schema(implementation = ProblemDetail.class)))
-    public ResponseEntity<ReservaResponse> crear(@Valid @RequestBody CrearReservaRequest request) {
-        ReservaResponse response = reservaService.crear(request);
-        URI location = ServletUriComponentsBuilder.fromCurrentRequestUri()
-                .queryParam("codigo", response.codigoReserva())
-                .build()
-                .toUri();
-        return ResponseEntity.created(location).body(response);
+    public ResponseEntity<EntityModel<ReservaResponse>> crear(@Valid @RequestBody CrearReservaRequest request) {
+        EntityModel<ReservaResponse> model = reservaModelAssembler.toModel(reservaService.crear(request));
+        return ResponseEntity.created(model.getRequiredLink(IanaLinkRelations.SELF).toUri()).body(model);
     }
 }
