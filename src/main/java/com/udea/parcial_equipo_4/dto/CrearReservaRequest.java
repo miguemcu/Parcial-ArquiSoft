@@ -4,6 +4,9 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
+/**
+ * Datos para crear una reserva: cliente, espectáculo y cantidad de sillas (1 a 10).
+ */
 public record CrearReservaRequest(
         @NotNull(message = "es obligatorio")
         Integer clienteId,

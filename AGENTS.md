@@ -30,7 +30,8 @@ Requisitos que el proyecto debe cumplir (el código debe converger hacia ellos):
 | Caché | Spring Cache + Redis |
 | API | Spring Web, Spring HATEOAS, springdoc-openapi |
 | Observabilidad | Actuator + Micrometer + Prometheus + Grafana |
-| Pruebas | JUnit 5, Mockito, Testcontainers |
+| Pruebas | JUnit 5, Mockito, H2 (modo PostgreSQL), Testcontainers (opcional) |
+| CI | GitHub Actions, JaCoCo, SonarCloud |
 | Utilidades | Lombok |
 | Configuración | `application.properties` (no usar YAML) |
 
@@ -109,10 +110,14 @@ Reglas estrictas:
 ## 7. Caché (Redis)
 
 - Patrón *cache-aside* con `@Cacheable` en el servicio (no en el controlador ni en el repositorio).
-- Toda caché con **TTL** explícito y nombre de caché propio (por ejemplo `reservas`).
-- El POST invalida o actualiza las claves afectadas con `@CacheEvict` / `@CachePut`.
+- `reservas`: consulta por código v1, TTL 10 minutos. `espectaculos`: consulta por ID, TTL 10 minutos.
+- `reservas-v2`: consulta por código que incluye disponibilidad, TTL 2 minutos.
+- `reservas-por-espectaculo`: páginas de reservas, clave por espectáculo, página y tamaño efectivo (máximo 50), TTL 2 minutos. Se cachea un snapshot DTO y se reconstruye el `Page`.
+- La creación invalida todas las entradas de `reservas-v2` y `reservas-por-espectaculo` después del commit. No invalida `reservas` ni `espectaculos`.
+- Las cachés Redis usan serializadores JSON tipados por DTO, deshabilitan valores nulos y registran estadísticas para Micrometer.
 - Cachea DTOs serializables, no entidades JPA.
-- La aplicación debe seguir funcionando (más lento) si Redis no está disponible.
+- El `CacheErrorHandler` registra un `warn` sin claves ni datos personales y permite que la aplicación siga funcionando (más lento) si Redis falla.
+- Las pruebas usan caché simple en memoria (`spring.cache.type=simple`), sin Redis ni Docker.
 
 ## 8. Observabilidad
 
@@ -123,20 +128,47 @@ Reglas estrictas:
 
 ## 9. Docker
 
-- `Dockerfile` multi-stage (build con Maven, runtime con JRE 21 ligero), ejecutando como usuario no root.
-- `docker-compose.yml` con: app, postgres, redis, prometheus y grafana.
-- Configuración por variables de entorno. Ningún secreto en el repositorio: usa `.env` (ignorado por git) y un `.env.example` documentado.
-- `docker compose up` debe levantar todo el sistema desde cero.
+- `Dockerfile` multi-stage: compila con el wrapper de Maven sobre `eclipse-temurin:21-jdk-alpine` (sin tests, los corre el CI) y ejecuta sobre `eclipse-temurin:21-jre-alpine` con las capas de Spring Boot, usuario no root, `-XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError` y `HEALTHCHECK` contra `/actuator/health`.
+- `.dockerignore` deja fuera `.git`, `target`, `.env`, `.env.*` (salvo `.env.example`), IDEs, `.claude`, `docs` y `observability`.
+- `docker-compose.yml` (la base de datos **no** va en el compose: es PostgreSQL externo en Supabase):
+
+| Servicio | Imagen | Puerto | Notas |
+|---|---|---|---|
+| `app` | build local | 8080 | Lee el `.env` (`env_file`). `REDIS_HOST=redis`, `REDIS_PORT=6379`. Espera a que Redis esté healthy. |
+| `redis` | `redis:8-alpine` | 6379 (solo desarrollo) | Caché sin persistencia en disco. Healthcheck `redis-cli ping`. |
+| `prometheus` | `prom/prometheus` | 9090 | Config en `observability/prometheus/prometheus.yml`; hace scrape de `app:8080/actuator/prometheus`. |
+| `grafana` | `grafana/grafana` | 3000 | Datasource y dashboards desde `observability/grafana/`. Contraseña admin en `GRAFANA_ADMIN_PASSWORD` (obligatoria). |
+
+- Variables (documentadas en `.env.example`): `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `DB_POOL_MAX_SIZE`, `FLYWAY_BASELINE_ON_MIGRATE`, `REDIS_HOST`, `REDIS_PORT`, `FRONTEND_URL`, `GRAFANA_ADMIN_USER`, `GRAFANA_ADMIN_PASSWORD`. Ningún secreto en el repositorio: el `.env` está ignorado por git y no entra a la imagen.
+- Arranque: `cp .env.example .env`, completar valores y `docker compose up -d --build`.
 
 ## 10. Pruebas
 
+- Las pruebas no necesitan Postgres, Redis, Docker ni el `.env`. Usan **H2 en memoria en modo PostgreSQL** y Flyway aplica las migraciones reales de `db/migration` (con `ddl-auto=validate`), así cada migración se prueba en cada build.
+- La configuración de pruebas vive en `src/test/resources/application.properties`. Es autocontenida: reemplaza al `application.properties` principal durante los tests. Si agregas una propiedad nueva que use `${...}` en el principal, agrega su valor de prueba allí.
+- Si una migración usa sintaxis exclusiva de PostgreSQL que H2 no soporta, avisa al equipo antes de cambiar la estrategia de pruebas.
 - Servicios: pruebas unitarias con JUnit 5 + Mockito.
-- Repositorios e integración: Testcontainers con PostgreSQL y Redis reales, con las migraciones de Flyway aplicadas.
+- Repositorios e integración: `@SpringBootTest` / `@DataJpaTest` sobre H2.
+- Testcontainers (las dependencias siguen en el `pom.xml`) queda como opción para pruebas específicas que necesiten PostgreSQL o Redis reales (por ejemplo, comportamiento de locks propio de PostgreSQL). Esas pruebas requieren Docker.
 - Controladores: `@WebMvcTest` / MockMvc para códigos de estado, validación y formato de errores.
 - Casos obligatorios del POST: éxito (`201`), validación (`400`), cliente o espectáculo inexistente (`404`) y sillas insuficientes (`409`).
 - Debe haber una prueba de concurrencia que verifique que no se sobrevenden sillas.
 
-## 11. Git: commits y ramas
+## 11. CI
+
+- Workflow en `.github/workflows/ci.yml` (GitHub Actions). Corre en cada push a `main` y `develop` y en cada PR hacia esas ramas.
+- Jobs: `tests` → (`sonar` y `docker-build` en paralelo) → `docker-publish`.
+  - `tests`: `./mvnw -B verify` (H2 + JaCoCo). Sube los reportes de Surefire y JaCoCo, y los binarios y la cobertura que usa Sonar.
+  - `sonar`: analiza en SonarCloud con esos artefactos (no repite los tests) y espera el quality gate. Solo en PRs y en `main` (límite del plan gratuito).
+  - `docker-build`: construye la imagen sin publicarla, para validar el `Dockerfile` en cada PR.
+  - `docker-publish` (CD): solo en push a `main`, si `tests` y `docker-build` pasaron y `sonar` pasó o se omitió. Publica `<DOCKERHUB_USERNAME>/parcial-arquisoft` con las etiquetas `latest` y el SHA corto del commit.
+- Antes de abrir un PR, `./mvnw verify` debe pasar en local.
+- `SONAR_TOKEN` vive **solo** como secreto del repositorio en GitHub. Nunca en el `pom.xml`, el `.env` ni otro archivo. Sin el secreto (por ejemplo, PRs desde forks) el paso de Sonar se omite.
+- SonarCloud (plan gratuito) solo analiza `main` y los pull requests. En los push a `develop` el paso de Sonar se omite; el código de `develop` ya se analizó en su PR.
+- Umbral de cobertura activo: el build falla si la cobertura de líneas baja del 80 % (`jacoco.minimo.lineas` en el `pom.xml`).
+- Los secretos `SONAR_TOKEN`, `DOCKERHUB_USERNAME` y `DOCKERHUB_TOKEN` viven **solo** como secretos del repositorio en GitHub.
+
+## 12. Git: commits y ramas
 
 ### Conventional Commits
 
@@ -179,11 +211,11 @@ Cambio incompatible: agrega `!` después del alcance (`feat(api)!: ...`) y un pi
 - Todo cambio entra por Pull Request con al menos una revisión de otra persona del equipo.
 - Los PRs son pequeños y con un propósito claro. El título sigue Conventional Commits.
 
-## 12. Definición de terminado
+## 13. Definición de terminado
 
 Un cambio está terminado cuando:
 
-1. Compila (`mvn clean verify`) y las pruebas pasan.
+1. Compila (`./mvnw clean verify`), las pruebas pasan y el CI está en verde.
 2. Respeta las capas de la sección 4.
 3. Si toca la base de datos, incluye su migración Flyway.
 4. Los endpoints nuevos o modificados están documentados en OpenAPI.
@@ -191,7 +223,7 @@ Un cambio está terminado cuando:
 6. No introduce secretos ni datos sensibles.
 7. Los commits siguen Conventional Commits.
 
-## 13. Lo que NO debes hacer
+## 14. Lo que NO debes hacer
 
 - No expongas entidades JPA en los controladores.
 - No pongas lógica de negocio en controladores ni repositorios.

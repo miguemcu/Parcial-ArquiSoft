@@ -2,6 +2,7 @@ package com.udea.parcial_equipo_4.service;
 
 import com.udea.parcial_equipo_4.dto.CrearReservaRequest;
 import com.udea.parcial_equipo_4.dto.ReservaResponse;
+import com.udea.parcial_equipo_4.dto.ReservaV2Response;
 import com.udea.parcial_equipo_4.exception.ClienteNoEncontradoException;
 import com.udea.parcial_equipo_4.exception.EspectaculoNoEncontradoException;
 import com.udea.parcial_equipo_4.exception.ReservaNoEncontradaException;
@@ -13,11 +14,18 @@ import com.udea.parcial_equipo_4.repository.ClienteRepository;
 import com.udea.parcial_equipo_4.repository.EspectaculoRepository;
 import com.udea.parcial_equipo_4.repository.ReservaRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
 
+/**
+ * Lógica de negocio de reservas: consulta por código (v1 y v2), listado y creación con control
+ * de disponibilidad bajo bloqueo del espectáculo. Genera códigos {@code RES-XXXXXXXX} únicos.
+ */
 @Service
 @RequiredArgsConstructor
 public class ReservaService {
@@ -27,19 +35,54 @@ public class ReservaService {
     private static final int LONGITUD_SUFIJO_CODIGO = 8;
     private static final int MAX_INTENTOS_CODIGO = 10;
     private static final SecureRandom RANDOM = new SecureRandom();
+    public static final int TAMANO_MAXIMO_PAGINA = 50;
 
     private final ReservaRepository reservaRepository;
     private final ClienteRepository clienteRepository;
     private final EspectaculoRepository espectaculoRepository;
+    private final ReservaPageCacheService reservaPageCacheService;
+    private final ReservaMapper reservaMapper;
 
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "reservas", key = "#codigo")
     public ReservaResponse consultarPorCodigo(String codigo) {
         return reservaRepository.findByCodigoReserva(codigo)
                 .map(this::toResponse)
                 .orElseThrow(() -> new ReservaNoEncontradaException(codigo));
     }
 
+    /**
+     * Consulta de la versión 2: agrega la capacidad total del espectáculo y sus sillas disponibles.
+     */
+    @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "reservas-v2", key = "#codigo")
+    public ReservaV2Response consultarPorCodigoV2(String codigo) {
+        Reserva reserva = reservaRepository.findByCodigoReserva(codigo)
+                .orElseThrow(() -> new ReservaNoEncontradaException(codigo));
+        ReservaResponse v1 = toResponse(reserva);
+        Espectaculo espectaculo = reserva.getEspectaculo();
+        int reservadas = reservaRepository.sumarSillasReservadas(espectaculo.getId());
+        return new ReservaV2Response(
+                v1.codigoReserva(),
+                v1.cantidadSillas(),
+                v1.cliente(),
+                v1.espectaculo(),
+                espectaculo.getCantidadSillas(),
+                Math.max(espectaculo.getCantidadSillas() - reservadas, 0)
+        );
+    }
+
+    /**
+     * Lista las reservas de un espectáculo, de la más reciente a la más antigua (id descendente).
+     * Un tamaño de página mayor a {@value #TAMANO_MAXIMO_PAGINA} se limita a ese máximo.
+     */
+    @Transactional(readOnly = true)
+    public Page<ReservaResponse> listarPorEspectaculo(Integer espectaculoId, int page, int size) {
+        return reservaPageCacheService.listarPorEspectaculo(espectaculoId, page, size).toPage();
+    }
+
     @Transactional
+    @CacheEvict(cacheNames = {"reservas-v2", "reservas-por-espectaculo"}, allEntries = true)
     public ReservaResponse crear(CrearReservaRequest request) {
         Cliente cliente = clienteRepository.findById(request.clienteId())
                 .orElseThrow(() -> new ClienteNoEncontradoException(request.clienteId()));
@@ -76,13 +119,6 @@ public class ReservaService {
     }
 
     private ReservaResponse toResponse(Reserva reserva) {
-        Cliente cliente = reserva.getCliente();
-        Espectaculo espectaculo = reserva.getEspectaculo();
-        return new ReservaResponse(
-                reserva.getCodigoReserva(),
-                reserva.getCantidadSillas(),
-                new ReservaResponse.ClienteResumen(cliente.getId(), cliente.getNombre(), cliente.getDocumento()),
-                new ReservaResponse.EspectaculoResumen(espectaculo.getId(), espectaculo.getNombre(), espectaculo.getFecha())
-        );
+        return reservaMapper.toResponse(reserva);
     }
 }
