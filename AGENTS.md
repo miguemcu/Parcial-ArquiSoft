@@ -165,7 +165,7 @@ Reglas estrictas:
 - Antes de abrir un PR, `./mvnw verify` debe pasar en local.
 - `SONAR_TOKEN` vive **solo** como secreto del repositorio en GitHub. Nunca en el `pom.xml`, el `.env` ni otro archivo. Sin el secreto (por ejemplo, PRs desde forks) el paso de Sonar se omite.
 - SonarCloud (plan gratuito) solo analiza `main` y los pull requests. En los push a `develop` el paso de Sonar se omite; el código de `develop` ya se analizó en su PR.
-- El umbral mínimo de cobertura está desactivado (`jacoco.check.skip=true` en el `pom.xml`). Se activa con `./mvnw verify -Djacoco.check.skip=false` o cambiando la propiedad.
+- Umbral de cobertura activo: el build falla si la cobertura de líneas baja del 80 % (`jacoco.minimo.lineas` en el `pom.xml`).
 - Los secretos `SONAR_TOKEN`, `DOCKERHUB_USERNAME` y `DOCKERHUB_TOKEN` viven **solo** como secretos del repositorio en GitHub.
 
 ## 12. Git: commits y ramas
