@@ -22,6 +22,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
 
+/**
+ * Lógica de negocio de reservas: consulta por código (v1 y v2), listado y creación con control
+ * de disponibilidad bajo bloqueo del espectáculo. Genera códigos {@code RES-XXXXXXXX} únicos.
+ */
 @Service
 @RequiredArgsConstructor
 public class ReservaService {

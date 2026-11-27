@@ -4,6 +4,9 @@ import com.udea.parcial_equipo_4.dto.ReservaResponse;
 import com.udea.parcial_equipo_4.model.Reserva;
 import org.springframework.stereotype.Component;
 
+/**
+ * Convierte la entidad {@link com.udea.parcial_equipo_4.model.Reserva} en su DTO de respuesta.
+ */
 @Component
 public class ReservaMapper {
 

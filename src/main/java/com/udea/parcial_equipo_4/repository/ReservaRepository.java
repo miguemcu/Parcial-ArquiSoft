@@ -10,6 +10,9 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
 
+/**
+ * Acceso a datos de reservas: búsqueda por código, listado por espectáculo y suma de sillas reservadas.
+ */
 public interface ReservaRepository extends JpaRepository<Reserva, Integer> {
 
     @EntityGraph(attributePaths = {"cliente", "espectaculo"})

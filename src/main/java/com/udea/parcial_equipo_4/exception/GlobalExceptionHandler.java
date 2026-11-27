@@ -25,6 +25,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * Traduce las excepciones a respuestas {@link org.springframework.http.ProblemDetail} (RFC 9457)
+ * con el código HTTP adecuado, sin exponer stack traces.
+ */
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {

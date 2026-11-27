@@ -13,6 +13,9 @@ import lombok.Setter;
 
 import java.time.LocalDate;
 
+/**
+ * Entidad JPA de la tabla {@code espectaculo}; {@code cantidadSillas} es la capacidad total.
+ */
 @Entity
 @Table(name = "espectaculo")
 @Getter

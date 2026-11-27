@@ -14,6 +14,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * Entidad JPA de la tabla {@code reserva}: sillas reservadas por un cliente para un espectáculo.
+ */
 @Entity
 @Table(name = "reserva")
 @Getter

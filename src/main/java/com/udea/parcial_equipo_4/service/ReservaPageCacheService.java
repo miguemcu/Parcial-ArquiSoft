@@ -12,6 +12,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Listado paginado de reservas por espectáculo, cacheado en {@code reservas-por-espectaculo}.
+ */
 @Service
 @RequiredArgsConstructor
 public class ReservaPageCacheService {

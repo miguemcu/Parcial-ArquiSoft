@@ -30,6 +30,9 @@ import org.springframework.web.bind.annotation.RestController;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
+/**
+ * Endpoints de apoyo de espectáculos ({@code /api/espectaculos}): registrar, listar paginado y consultar por id.
+ */
 @RestController
 @RequestMapping("/api/espectaculos")
 @RequiredArgsConstructor
