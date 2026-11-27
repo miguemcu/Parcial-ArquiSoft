@@ -30,7 +30,8 @@ Requisitos que el proyecto debe cumplir (el código debe converger hacia ellos):
 | Caché | Spring Cache + Redis |
 | API | Spring Web, Spring HATEOAS, springdoc-openapi |
 | Observabilidad | Actuator + Micrometer + Prometheus + Grafana |
-| Pruebas | JUnit 5, Mockito, Testcontainers |
+| Pruebas | JUnit 5, Mockito, H2 (modo PostgreSQL), Testcontainers (opcional) |
+| CI | GitHub Actions, JaCoCo, SonarCloud |
 | Utilidades | Lombok |
 | Configuración | `application.properties` (no usar YAML) |
 
@@ -130,13 +131,26 @@ Reglas estrictas:
 
 ## 10. Pruebas
 
+- Las pruebas no necesitan Postgres, Redis, Docker ni el `.env`. Usan **H2 en memoria en modo PostgreSQL** y Flyway aplica las migraciones reales de `db/migration` (con `ddl-auto=validate`), así cada migración se prueba en cada build.
+- La configuración de pruebas vive en `src/test/resources/application.properties`. Es autocontenida: reemplaza al `application.properties` principal durante los tests. Si agregas una propiedad nueva que use `${...}` en el principal, agrega su valor de prueba allí.
+- Si una migración usa sintaxis exclusiva de PostgreSQL que H2 no soporta, avisa al equipo antes de cambiar la estrategia de pruebas.
 - Servicios: pruebas unitarias con JUnit 5 + Mockito.
-- Repositorios e integración: Testcontainers con PostgreSQL y Redis reales, con las migraciones de Flyway aplicadas.
+- Repositorios e integración: `@SpringBootTest` / `@DataJpaTest` sobre H2.
+- Testcontainers (las dependencias siguen en el `pom.xml`) queda como opción para pruebas específicas que necesiten PostgreSQL o Redis reales (por ejemplo, comportamiento de locks propio de PostgreSQL). Esas pruebas requieren Docker.
 - Controladores: `@WebMvcTest` / MockMvc para códigos de estado, validación y formato de errores.
 - Casos obligatorios del POST: éxito (`201`), validación (`400`), cliente o espectáculo inexistente (`404`) y sillas insuficientes (`409`).
 - Debe haber una prueba de concurrencia que verifique que no se sobrevenden sillas.
 
-## 11. Git: commits y ramas
+## 11. CI
+
+- Workflow en `.github/workflows/ci.yml` (GitHub Actions). Corre en cada push a `main` y `develop` y en cada PR hacia esas ramas.
+- Pasos: compila y ejecuta las pruebas con `./mvnw -B verify`, genera la cobertura con JaCoCo (`target/site/jacoco/`), analiza en SonarCloud esperando el quality gate y sube como artefactos el reporte de JaCoCo y los de Surefire.
+- Antes de abrir un PR, `./mvnw verify` debe pasar en local.
+- `SONAR_TOKEN` vive **solo** como secreto del repositorio en GitHub. Nunca en el `pom.xml`, el `.env` ni otro archivo. Sin el secreto (por ejemplo, PRs desde forks) el paso de Sonar se omite.
+- El umbral mínimo de cobertura está desactivado (`jacoco.check.skip=true` en el `pom.xml`). Se activa con `./mvnw verify -Djacoco.check.skip=false` o cambiando la propiedad.
+- Aún no hay CD (publicación de imagen Docker): se agregará cuando exista el `Dockerfile`.
+
+## 12. Git: commits y ramas
 
 ### Conventional Commits
 
@@ -179,11 +193,11 @@ Cambio incompatible: agrega `!` después del alcance (`feat(api)!: ...`) y un pi
 - Todo cambio entra por Pull Request con al menos una revisión de otra persona del equipo.
 - Los PRs son pequeños y con un propósito claro. El título sigue Conventional Commits.
 
-## 12. Definición de terminado
+## 13. Definición de terminado
 
 Un cambio está terminado cuando:
 
-1. Compila (`mvn clean verify`) y las pruebas pasan.
+1. Compila (`./mvnw clean verify`), las pruebas pasan y el CI está en verde.
 2. Respeta las capas de la sección 4.
 3. Si toca la base de datos, incluye su migración Flyway.
 4. Los endpoints nuevos o modificados están documentados en OpenAPI.
@@ -191,7 +205,7 @@ Un cambio está terminado cuando:
 6. No introduce secretos ni datos sensibles.
 7. Los commits siguen Conventional Commits.
 
-## 13. Lo que NO debes hacer
+## 14. Lo que NO debes hacer
 
 - No expongas entidades JPA en los controladores.
 - No pongas lógica de negocio en controladores ni repositorios.
