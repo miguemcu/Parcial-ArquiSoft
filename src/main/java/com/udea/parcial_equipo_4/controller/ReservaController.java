@@ -34,7 +34,7 @@ public class ReservaController {
 
     private final ReservaService reservaService;
 
-    @GetMapping
+    @GetMapping(version = "1")
     @Operation(summary = "Consultar una reserva por su código")
     @ApiResponse(responseCode = "200", description = "Reserva encontrada")
     @ApiResponse(responseCode = "400", description = "Falta el parámetro codigo",
@@ -47,7 +47,7 @@ public class ReservaController {
         return ResponseEntity.ok(reservaService.consultarPorCodigo(codigo));
     }
 
-    @PostMapping
+    @PostMapping(version = "1+")
     @Operation(summary = "Crear una reserva de sillas para un espectáculo")
     @ApiResponse(responseCode = "201", description = "Reserva creada",
             headers = @Header(name = "Location", description = "URL para consultar la reserva creada"))
