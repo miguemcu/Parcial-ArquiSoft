@@ -2,6 +2,7 @@ package com.udea.parcial_equipo_4.controller;
 
 import com.udea.parcial_equipo_4.dto.CrearReservaRequest;
 import com.udea.parcial_equipo_4.dto.ReservaResponse;
+import com.udea.parcial_equipo_4.dto.ReservaV2Response;
 import com.udea.parcial_equipo_4.service.ReservaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -52,6 +53,21 @@ public class ReservaController {
             @Parameter(description = "Código de la reserva", example = "RES-ABC12345")
             @RequestParam String codigo) {
         return ResponseEntity.ok(reservaModelAssembler.toModel(reservaService.consultarPorCodigo(codigo)));
+    }
+
+    @GetMapping(params = {"codigo", "!espectaculoId"}, version = "2")
+    @Operation(summary = "Consultar una reserva por su código (versión 2)",
+            description = "Igual que la versión 1, más los campos calculados totalSillasEspectaculo "
+                    + "y sillasDisponiblesEspectaculo. Requiere X-API-Version: 2.")
+    @ApiResponse(responseCode = "200", description = "Reserva encontrada")
+    @ApiResponse(responseCode = "400", description = "Falta el parámetro codigo, combinación de parámetros no permitida o versión inválida",
+            content = @Content(mediaType = PROBLEM_JSON, schema = @Schema(implementation = ProblemDetail.class)))
+    @ApiResponse(responseCode = "404", description = "No existe una reserva con ese código",
+            content = @Content(mediaType = PROBLEM_JSON, schema = @Schema(implementation = ProblemDetail.class)))
+    public ResponseEntity<EntityModel<ReservaV2Response>> consultarV2(
+            @Parameter(description = "Código de la reserva", example = "RES-ABC12345")
+            @RequestParam String codigo) {
+        return ResponseEntity.ok(reservaModelAssembler.toModel(reservaService.consultarPorCodigoV2(codigo)));
     }
 
     @GetMapping(params = {"espectaculoId", "!codigo"}, version = "1+")

@@ -2,6 +2,7 @@ package com.udea.parcial_equipo_4.service;
 
 import com.udea.parcial_equipo_4.dto.CrearReservaRequest;
 import com.udea.parcial_equipo_4.dto.ReservaResponse;
+import com.udea.parcial_equipo_4.dto.ReservaV2Response;
 import com.udea.parcial_equipo_4.exception.ClienteNoEncontradoException;
 import com.udea.parcial_equipo_4.exception.EspectaculoNoEncontradoException;
 import com.udea.parcial_equipo_4.exception.ReservaNoEncontradaException;
@@ -41,6 +42,26 @@ public class ReservaService {
         return reservaRepository.findByCodigoReserva(codigo)
                 .map(this::toResponse)
                 .orElseThrow(() -> new ReservaNoEncontradaException(codigo));
+    }
+
+    /**
+     * Consulta de la versión 2: agrega la capacidad total del espectáculo y sus sillas disponibles.
+     */
+    @Transactional(readOnly = true)
+    public ReservaV2Response consultarPorCodigoV2(String codigo) {
+        Reserva reserva = reservaRepository.findByCodigoReserva(codigo)
+                .orElseThrow(() -> new ReservaNoEncontradaException(codigo));
+        ReservaResponse v1 = toResponse(reserva);
+        Espectaculo espectaculo = reserva.getEspectaculo();
+        int reservadas = reservaRepository.sumarSillasReservadas(espectaculo.getId());
+        return new ReservaV2Response(
+                v1.codigoReserva(),
+                v1.cantidadSillas(),
+                v1.cliente(),
+                v1.espectaculo(),
+                espectaculo.getCantidadSillas(),
+                Math.max(espectaculo.getCantidadSillas() - reservadas, 0)
+        );
     }
 
     /**
