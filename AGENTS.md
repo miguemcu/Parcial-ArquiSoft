@@ -151,6 +151,7 @@ Reglas estrictas:
 - Pasos: compila y ejecuta las pruebas con `./mvnw -B verify`, genera la cobertura con JaCoCo (`target/site/jacoco/`), analiza en SonarCloud esperando el quality gate y sube como artefactos el reporte de JaCoCo y los de Surefire.
 - Antes de abrir un PR, `./mvnw verify` debe pasar en local.
 - `SONAR_TOKEN` vive **solo** como secreto del repositorio en GitHub. Nunca en el `pom.xml`, el `.env` ni otro archivo. Sin el secreto (por ejemplo, PRs desde forks) el paso de Sonar se omite.
+- SonarCloud (plan gratuito) solo analiza `main` y los pull requests. En los push a `develop` el paso de Sonar se omite; el código de `develop` ya se analizó en su PR.
 - El umbral mínimo de cobertura está desactivado (`jacoco.check.skip=true` en el `pom.xml`). Se activa con `./mvnw verify -Djacoco.check.skip=false` o cambiando la propiedad.
 - Aún no hay CD (publicación de imagen Docker): se agregará cuando exista el `Dockerfile`.
 

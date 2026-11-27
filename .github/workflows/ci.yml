@@ -43,10 +43,16 @@ jobs:
       - name: Compilar, probar y medir cobertura
         run: ./mvnw -B verify
 
+      # El plan gratuito de SonarCloud solo analiza la rama principal (main) y
+      # los pull requests. Un push a develop fallaría con "Organization is not
+      # allowed to access data from non main branches", así que ahí se omite:
+      # develop ya queda analizado en el PR que lo modifica.
       - name: Análisis en SonarCloud
-        if: env.SONAR_TOKEN != ''
+        if: >-
+          env.SONAR_TOKEN != '' &&
+          (github.event_name == 'pull_request' || github.ref == 'refs/heads/main')
         run: >
-          ./mvnw -B org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
+          ./mvnw -B org.sonarsource.scanner.maven:sonar-maven-plugin:5.9.0.7382:sonar
           -Dsonar.qualitygate.wait=true
 
       - name: Subir reporte de cobertura (JaCoCo)
