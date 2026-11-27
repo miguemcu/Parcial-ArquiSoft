@@ -37,6 +37,12 @@
 		<jacoco.check.skip>true</jacoco.check.skip>
 		<jacoco.minimo.lineas>0.60</jacoco.minimo.lineas>
 
+		<!-- SonarCloud. El token NO va aquí: se lee del secreto SONAR_TOKEN. -->
+		<sonar.organization>&lt;ORG&gt;</sonar.organization>
+		<sonar.projectKey>&lt;PROJECT_KEY&gt;</sonar.projectKey>
+		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
+		<sonar.coverage.jacoco.xmlReportPaths>target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+		<sonar.coverage.exclusions>**/dto/**,**/config/**,**/ParcialEquipo4Application.java</sonar.coverage.exclusions>
 	</properties>
 	<dependencies>
 		<dependency>
