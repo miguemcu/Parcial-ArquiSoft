@@ -55,6 +55,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problem(HttpStatus.CONFLICT, "Sillas insuficientes", ex.getMessage());
     }
 
+    @ExceptionHandler(ClienteDuplicadoException.class)
+    public ProblemDetail handleClienteDuplicado(ClienteDuplicadoException ex) {
+        return problem(HttpStatus.CONFLICT, "Cliente duplicado", ex.getMessage());
+    }
+
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleUnexpected(Exception ex) {
         log.error("Error inesperado procesando la solicitud", ex);
