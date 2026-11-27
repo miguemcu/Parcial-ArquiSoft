@@ -1,4 +1,6 @@
-const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
+// URL del backend: la define config.js (en Vercel se genera con la variable API_URL).
+// Si está vacía, se usa el mismo origen (frontend servido por Spring Boot en /).
+const BACKEND_URL = window.API_URL || window.location.origin;
 const API_BASE = new URL("/api/reservas", BACKEND_URL);
 const API_VERSION = "1.0";
 
