@@ -110,10 +110,14 @@ Reglas estrictas:
 ## 7. Caché (Redis)
 
 - Patrón *cache-aside* con `@Cacheable` en el servicio (no en el controlador ni en el repositorio).
-- Toda caché con **TTL** explícito y nombre de caché propio (por ejemplo `reservas`).
-- El POST invalida o actualiza las claves afectadas con `@CacheEvict` / `@CachePut`.
+- `reservas`: consulta por código v1, TTL 10 minutos. `espectaculos`: consulta por ID, TTL 10 minutos.
+- `reservas-v2`: consulta por código que incluye disponibilidad, TTL 2 minutos.
+- `reservas-por-espectaculo`: páginas de reservas, clave por espectáculo, página y tamaño efectivo (máximo 50), TTL 2 minutos. Se cachea un snapshot DTO y se reconstruye el `Page`.
+- La creación invalida todas las entradas de `reservas-v2` y `reservas-por-espectaculo` después del commit. No invalida `reservas` ni `espectaculos`.
+- Las cachés Redis usan serializadores JSON tipados por DTO, deshabilitan valores nulos y registran estadísticas para Micrometer.
 - Cachea DTOs serializables, no entidades JPA.
-- La aplicación debe seguir funcionando (más lento) si Redis no está disponible.
+- El `CacheErrorHandler` registra un `warn` sin claves ni datos personales y permite que la aplicación siga funcionando (más lento) si Redis falla.
+- Las pruebas usan caché simple en memoria (`spring.cache.type=simple`), sin Redis ni Docker.
 
 ## 8. Observabilidad
 
