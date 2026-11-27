@@ -18,6 +18,7 @@ public class ReservaPageCacheService {
 
     private final ReservaRepository reservaRepository;
     private final EspectaculoRepository espectaculoRepository;
+    private final ReservaMapper reservaMapper;
 
     @Transactional(readOnly = true)
     @Cacheable(
@@ -33,7 +34,7 @@ public class ReservaPageCacheService {
         PageRequest pageRequest = PageRequest.of(page, tamanoEfectivo,
                 Sort.by(Sort.Direction.DESC, "id"));
         Page<Reserva> reservas = reservaRepository.findByEspectaculoId(espectaculoId, pageRequest);
-        return ReservaPageSnapshot.from(reservas.map(ReservaService::toResponse));
+        return ReservaPageSnapshot.from(reservas.map(reservaMapper::toResponse));
     }
 
     public static int normalizarTamanoPagina(int size) {

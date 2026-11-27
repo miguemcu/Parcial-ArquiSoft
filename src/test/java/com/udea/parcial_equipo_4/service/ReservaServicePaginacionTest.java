@@ -31,6 +31,9 @@ class ReservaServicePaginacionTest {
     @Mock
     private EspectaculoRepository espectaculoRepository;
 
+    @Mock
+    private ReservaMapper reservaMapper;
+
     @InjectMocks
     private ReservaPageCacheService reservaPageCacheService;
 
