@@ -28,6 +28,21 @@
 	</scm>
 	<properties>
 		<java.version>21</java.version>
+		<springdoc.version>3.2.1</springdoc.version>
+		<jacoco.version>0.8.16</jacoco.version>
+
+		<!-- Umbral de cobertura (JaCoCo check): el build falla si la cobertura de líneas baja del mínimo.
+		     Para desactivarlo puntualmente: mvn verify -Djacoco.check.skip=true
+		     El mínimo es una fracción (0.60 = 60 %). -->
+		<jacoco.check.skip>false</jacoco.check.skip>
+		<jacoco.minimo.lineas>0.80</jacoco.minimo.lineas>
+
+		<!-- SonarCloud. El token NO va aquí: se lee del secreto SONAR_TOKEN. -->
+		<sonar.organization>miguemcu</sonar.organization>
+		<sonar.projectKey>miguemcu_Parcial-ArquiSoft</sonar.projectKey>
+		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
+		<sonar.coverage.jacoco.xmlReportPaths>target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+		<sonar.coverage.exclusions>**/dto/**,**/config/**,**/ParcialEquipo4Application.java</sonar.coverage.exclusions>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -41,6 +56,10 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-redis</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-cache</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -62,6 +81,11 @@
 			<groupId>org.flywaydb</groupId>
 			<artifactId>flyway-database-postgresql</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+			<version>${springdoc.version}</version>
+		</dependency>
 
 		<dependency>
 			<groupId>io.micrometer</groupId>
@@ -77,6 +101,11 @@
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>
+		</dependency>
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -135,6 +164,62 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>${jacoco.version}</version>
+				<configuration>
+					<excludes>
+						<!-- Clase principal y beans de configuración: sin lógica que probar -->
+						<exclude>com/udea/parcial_equipo_4/ParcialEquipo4Application.class</exclude>
+						<exclude>com/udea/parcial_equipo_4/config/**</exclude>
+					</excludes>
+				</configuration>
+				<executions>
+					<execution>
+						<id>prepare-agent</id>
+						<phase>initialize</phase>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>report</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>report</goal>
+						</goals>
+						<configuration>
+							<formats>
+								<format>XML</format>
+								<format>HTML</format>
+							</formats>
+						</configuration>
+					</execution>
+					<execution>
+						<id>check</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>check</goal>
+						</goals>
+						<configuration>
+							<skip>${jacoco.check.skip}</skip>
+							<rules>
+								<rule>
+									<element>BUNDLE</element>
+									<limits>
+										<limit>
+											<counter>LINE</counter>
+											<value>COVEREDRATIO</value>
+											<minimum>${jacoco.minimo.lineas}</minimum>
+										</limit>
+									</limits>
+								</rule>
+							</rules>
+						</configuration>
+					</execution>
+				</executions>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
