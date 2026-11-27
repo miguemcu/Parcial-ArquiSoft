@@ -37,12 +37,13 @@ public class ReservaService {
     private final ClienteRepository clienteRepository;
     private final EspectaculoRepository espectaculoRepository;
     private final ReservaPageCacheService reservaPageCacheService;
+    private final ReservaMapper reservaMapper;
 
     @Transactional(readOnly = true)
     @Cacheable(cacheNames = "reservas", key = "#codigo")
     public ReservaResponse consultarPorCodigo(String codigo) {
         return reservaRepository.findByCodigoReserva(codigo)
-                .map(ReservaService::toResponse)
+                .map(this::toResponse)
                 .orElseThrow(() -> new ReservaNoEncontradaException(codigo));
     }
 
@@ -113,14 +114,7 @@ public class ReservaService {
         return codigo.toString();
     }
 
-    static ReservaResponse toResponse(Reserva reserva) {
-        Cliente cliente = reserva.getCliente();
-        Espectaculo espectaculo = reserva.getEspectaculo();
-        return new ReservaResponse(
-                reserva.getCodigoReserva(),
-                reserva.getCantidadSillas(),
-                new ReservaResponse.ClienteResumen(cliente.getId(), cliente.getNombre(), cliente.getDocumento()),
-                new ReservaResponse.EspectaculoResumen(espectaculo.getId(), espectaculo.getNombre(), espectaculo.getFecha())
-        );
+    private ReservaResponse toResponse(Reserva reserva) {
+        return reservaMapper.toResponse(reserva);
     }
 }

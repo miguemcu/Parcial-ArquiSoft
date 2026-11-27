@@ -7,6 +7,7 @@ import com.udea.parcial_equipo_4.repository.ClienteRepository;
 import com.udea.parcial_equipo_4.repository.EspectaculoRepository;
 import com.udea.parcial_equipo_4.repository.ReservaRepository;
 import com.udea.parcial_equipo_4.service.ReservaPageCacheService;
+import com.udea.parcial_equipo_4.service.ReservaMapper;
 import com.udea.parcial_equipo_4.service.ReservaService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -63,7 +64,7 @@ class CacheErrorHandlerFallbackTest {
     }
 
     @Configuration(proxyBeanMethods = false)
-    @Import({CacheConfig.class, ReservaService.class, ReservaPageCacheService.class})
+    @Import({CacheConfig.class, ReservaService.class, ReservaPageCacheService.class, ReservaMapper.class})
     static class TestConfiguration {
 
         @Bean
