@@ -13,6 +13,9 @@ import com.udea.parcial_equipo_4.repository.ClienteRepository;
 import com.udea.parcial_equipo_4.repository.EspectaculoRepository;
 import com.udea.parcial_equipo_4.repository.ReservaRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +30,7 @@ public class ReservaService {
     private static final int LONGITUD_SUFIJO_CODIGO = 8;
     private static final int MAX_INTENTOS_CODIGO = 10;
     private static final SecureRandom RANDOM = new SecureRandom();
+    public static final int TAMANO_MAXIMO_PAGINA = 50;
 
     private final ReservaRepository reservaRepository;
     private final ClienteRepository clienteRepository;
@@ -37,6 +41,20 @@ public class ReservaService {
         return reservaRepository.findByCodigoReserva(codigo)
                 .map(this::toResponse)
                 .orElseThrow(() -> new ReservaNoEncontradaException(codigo));
+    }
+
+    /**
+     * Lista las reservas de un espectáculo, de la más reciente a la más antigua (id descendente).
+     * Un tamaño de página mayor a {@value #TAMANO_MAXIMO_PAGINA} se limita a ese máximo.
+     */
+    @Transactional(readOnly = true)
+    public Page<ReservaResponse> listarPorEspectaculo(Integer espectaculoId, int page, int size) {
+        if (!espectaculoRepository.existsById(espectaculoId)) {
+            throw new EspectaculoNoEncontradoException(espectaculoId);
+        }
+        PageRequest pageRequest = PageRequest.of(page, Math.min(size, TAMANO_MAXIMO_PAGINA),
+                Sort.by(Sort.Direction.DESC, "id"));
+        return reservaRepository.findByEspectaculoId(espectaculoId, pageRequest).map(this::toResponse);
     }
 
     @Transactional
